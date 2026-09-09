@@ -15,9 +15,9 @@ def configuration_score(
     - Use problem.score_components(configuration); ya retorna cobertura,
       redundancia y exposición en ese orden.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 1: implemente configuration_score")
-
+    cobertura, redundancia, exposicion = problem.score_components(configuration)
+    puntaje = cobertura - redundancia - exposicion
+    return puntaje
 
 def hill_climbing(
     problem: SmartGridOptimizationProblem,
@@ -38,9 +38,41 @@ def hill_climbing(
     - Inicialice los historiales con la configuración inicial y agregue solo las
       mejoras aceptadas antes de retornar el OptimizationResult.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 1: implemente hill_climbing")
+    actual = initial_configuration
+    puntaje = configuration_score(problem, actual)
+    historial = [actual]
+    puntaje_historial = [puntaje]
+    evaluaciones = 1
+    
+    while evaluaciones < max_iterations:
+        vecinos = problem.neighbors(actual)
+        mejor_vecino = None
+        mejor_puntaje = puntaje
+        
+        for vecino in vecinos:
+            puntaje_vecino = configuration_score(problem, vecino)
+            evaluaciones += 1
+            
+            if puntaje_vecino > mejor_puntaje:
+                mejor_puntaje = puntaje_vecino
+                mejor_vecino = vecino
+        
+        if mejor_vecino is None:
+            break
+        
+        actual = mejor_vecino
+        puntaje = mejor_puntaje
+        historial.append(actual)
+        puntaje_historial.append(puntaje)
 
+    return OptimizationResult(
+        best_configuration=actual,
+        best_score=puntaje,
+        evaluations=evaluaciones,
+        iterations=max_iterations - 1,
+        history=historial,
+        score_history=puntaje_historial,
+    )
 
 def cooling_schedule(initial_temperature: float, cooling_rate: float, iteration: int) -> float:
     """
@@ -48,8 +80,7 @@ def cooling_schedule(initial_temperature: float, cooling_rate: float, iteration:
 
     Esta función se invoca desde simulated_annealing en cada iteración.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 2: implemente cooling_schedule")
+    return initial_temperature * (cooling_rate ** iteration)
 
 
 def simulated_annealing(
@@ -79,9 +110,47 @@ def simulated_annealing(
     rng = rng or random.Random()
     minimum_temperature = 1e-9
 
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 2: implemente simulated_annealing")
+    actual = initial_configuration
+    puntaje = configuration_score(problem, actual)
+    mejor = actual
+    mejor_puntaje = puntaje
 
+    historial = [actual]
+    puntaje_historial = [puntaje]
+    evaluaciones = 1
+    iteracion = 1
+
+    while iteracion <= max_iterations:
+        temperatura = cooling_schedule(initial_temperature, cooling_rate, iteracion)
+        if temperatura < minimum_temperature:
+            break
+
+        vecino = rng.choice(problem.neighbors(actual))        
+        puntaje_vecino = configuration_score(problem, vecino) 
+        evaluaciones += 1
+
+        delta = puntaje_vecino - puntaje
+        if delta > 0 or (rng.random() < math.exp(delta / temperatura)):
+            actual = vecino
+            puntaje = puntaje_vecino
+
+        if puntaje > mejor_puntaje:   
+            mejor = actual
+            mejor_puntaje = puntaje
+
+        historial.append(actual)         
+        puntaje_historial.append(puntaje) 
+
+        iteracion += 1
+
+    return OptimizationResult(
+        best_configuration=mejor,       
+        best_score=mejor_puntaje,       
+        evaluations=evaluaciones,
+        iterations=iteracion,
+        history=historial,
+        score_history=puntaje_historial,
+    )
 
 def one_point_crossover(
     parent1: Configuration, parent2: Configuration, rng: random.Random

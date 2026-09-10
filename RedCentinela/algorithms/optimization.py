@@ -170,9 +170,11 @@ def one_point_crossover(
     if len(parent1) < 2:
         return parent1, parent2
 
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 3: implemente one_point_crossover")
+    cut = rng.randint(1, len(parent1) - 1)
+    child1 = parent1[:cut] + parent2[cut:]
+    child2 = parent2[:cut] + parent2[cut:]
 
+    return (child1, child2)
 
 def swap_mutation(
     individual: Configuration, mutation_probability: float, rng: random.Random
@@ -190,8 +192,25 @@ def swap_mutation(
     - Si alguno de los dos grupos está vacío, no hay un intercambio posible.
     - Retorne una tupla nueva; no modifique el individuo recibido.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 3: implemente swap_mutation")
+    mutation = [x for x in individual]
+
+    if rng.random() <= mutation_probability:
+        active_index = []
+        inactive_index = []
+        for i in range(len(individual)):
+            k = individual[i]
+            if k == 1:
+                active_index.append(i)
+            else:
+                inactive_index.append(i)
+        rand_active = rng.choice(active_index)
+        rand_inactive = rng.choice(inactive_index)
+        mutation[rand_active] = individual[rand_inactive]
+        mutation[rand_inactive] = individual[rand_active]
+
+    mutation = tuple(mutation)
+
+    return mutation
 
 
 def genetic_algorithm(
@@ -227,5 +246,48 @@ def genetic_algorithm(
     if not 0 <= elite_size <= population_size:
         raise ValueError("elite_size debe estar entre 0 y population_size")
 
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 3: implemente genetic_algorithm")
+    population = problem.initial_population(population_size, rng)
+    scores = [configuration_score(problem, config) for config in population]
+    evaluations = len(scores)
+    best_score = max(scores)
+    best_config = population[scores.index(best_score)]
+    history = []
+    score_history = []
+    for gen in range(generations):
+        new_pop = []
+        new_scores = []
+        for ind in range(population_size):
+            parent1 = problem.tournament_select(population, scores, rng)
+            parent2 = problem.tournament_select(population, scores, rng)
+            children = one_point_crossover(parent1, parent2, rng)
+            children = tuple([problem.repair_configuration(child, rng) for child
+                              in children])
+            child1, child2 = [swap_mutation(child, mutation_probability, rng)
+                              for child in children]
+            new_pop.append(child1)
+            new_scores.append(configuration_score(problem, child1))
+            new_pop.append(child2)
+            new_scores.append(configuration_score(problem, child2))
+            evaluations += 2
+        sorted_pop = sorted(zip(new_scores, new_pop), reverse=True)
+        new_pop = [config for score, config in sorted_pop]
+        new_scores = [score for score, config in sorted_pop]
+        population = new_pop[:elite_size]
+        scores = new_scores[:elite_size]
+        history.append(population[0])
+        score_history.append(scores[0])
+        if scores[0] > best_score:
+            best_score = scores[0]
+            best_config = population[0]
+
+
+    result = OptimizationResult(
+            best_config,
+            best_score,
+            evaluations,
+            generations,
+            history,
+            score_history
+            )
+
+    return result

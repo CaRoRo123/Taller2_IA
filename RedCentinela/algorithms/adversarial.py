@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import math
 
 from algorithms.evaluation import evaluation_function
 from world.game_state import GameState
@@ -41,7 +42,65 @@ class MinimaxAgent(MultiAgentSearchAgent):
           la raíz. Retorne la acción de MAX y conserve la primera en los empates.
         """
         # TODO: Add your code here
-        raise NotImplementedError("Punto 4: implemente MinimaxAgent.get_action")
+        # 1. Reiniciar el contador de nodos evaluados al inicio de get_action
+        self.nodes_evaluated = 0
+        num_agents = state.get_num_agents()
+
+        # 2. Función para calcular el valor Minimax de los estados
+        def minimax(current_state: GameState, current_depth: int, agent_index: int) -> float:
+          
+            self.nodes_evaluated += 1
+
+            # Caso base: Estado terminal (victoria/derrota)
+            if current_state.is_win() or current_state.is_lose() or current_depth == 0:
+                return evaluation_function(current_state)
+
+            legal_actions = current_state.get_legal_actions(agent_index)
+            if not legal_actions:
+                return evaluation_function(current_state)
+
+            next_agent = (agent_index + 1) % num_agents
+            next_depth = current_depth - 1
+
+            # Nodo MAX (Defensor / Agente 0): Busca el valor más alto
+            if agent_index == 0:
+                max_eval = -math.inf
+                for action in legal_actions:
+                    successor = current_state.generate_successor(agent_index, action)
+                    eval_val = minimax(successor, next_depth, next_agent)
+                    if eval_val > max_eval:
+                        max_eval = eval_val
+                return max_eval
+
+            # Nodo MIN (Intruso / Agente 1): Busca el valor más bajo
+            else:
+                min_eval = math.inf
+                for action in legal_actions:
+                    successor = current_state.generate_successor(agent_index, action)
+                    eval_val = minimax(successor, next_depth, next_agent)
+                    if eval_val < min_eval:
+                        min_eval = eval_val
+                return min_eval
+
+        # 3. Selección de la mejor acción en la Raíz (Defensor / Agente 0)
+        self.nodes_evaluated += 1
+
+        best_action = None
+        best_value = -math.inf
+        legal_actions = state.get_legal_actions(0)
+
+        for action in legal_actions:
+            successor = state.generate_successor(0, action)
+            # Se evalua el sucesor: se pasa al agente 1 (MIN) y se descuenta 1 ply de profundidad
+            action_value = minimax(successor, self.depth - 1, 1)
+
+            # Se conserva la mejor acción.
+            if action_value > best_value:
+                best_value = action_value
+                best_action = action
+
+        return best_action
+        
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):

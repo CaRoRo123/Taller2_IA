@@ -39,4 +39,35 @@ def evaluation_function(state: GameState) -> float:
         return base_evaluation_function(state)
 
     # TODO: Add your code here
-    return base_evaluation_function(state)
+    # Evaluar la posición del defensor y el intruso
+    puntaje = state.get_score()
+    def_pos = state.defender_position
+    intr_pos = state.intruder_position
+    pending_terminals = state.pending_terminals
+    legal_actions = state.get_legal_actions(0)
+    
+    # Distancia entre el defensor y el intruso
+    distance = state.layout.distance(def_pos, intr_pos)
+    if math.isinf(distance):
+        distance = 100.0  
+    
+    componente_puntaje = puntaje * 2.0 # Ponderar el puntaje
+    componente_proximidad_intruso = -3.0 * distance  # Penalizar la proximidad del intruso
+    
+    # Distancia a la terminal pendienta más cercana amenazada por el intruso
+    componente_terminal = 0.0
+    if pending_terminals:
+      distancia_term = [state.layout.distance(intr_pos, term) for term in pending_terminals]
+      distancias_validas = [d for d in distancia_term if not math.isinf(d)]
+      
+      if distancias_validas:
+          min_dist = min(distancias_validas)
+          componente_terminal = -2.0 * max(0.0, 10.0 - min_dist)  # Penalizar la cercanía a la terminal
+    
+    # Movilidad disponible del defensor
+    componente_movilidad = 0.5 * len(legal_actions)  
+    valor_final = componente_puntaje + componente_proximidad_intruso + componente_terminal + componente_movilidad
+    
+     # Asegurar que el valor esté en el rango
+    valor_final = max(-999.0, min(999.0, valor_final)) 
+    return valor_final

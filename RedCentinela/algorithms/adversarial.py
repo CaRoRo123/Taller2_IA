@@ -121,4 +121,79 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           y corte si valor <= alpha.
         """
         # TODO: Add your code here
-        raise NotImplementedError("Punto 5: implemente AlphaBetaAgent.get_action")
+        self.nodes_evaluated = 0
+        num_agents = state.get_num_agents()
+        
+        def alphabeta(current_state: GameState, current_depth: int, agent_index: int, alpha: float, beta: float) -> float:
+            self.nodes_evaluated += 1
+
+            # Caso base: Estado terminal (victoria/derrota) o profundidad alcanzada
+            if current_state.is_win() or current_state.is_lose() or current_depth == 0:
+                return evaluation_function(current_state)
+
+            # Expandir sucesores
+            legal_actions = current_state.get_legal_actions(agent_index) 
+            if not legal_actions:
+                return evaluation_function(current_state)
+
+            # Determinar el siguiente agente y la profundidad para la llamada recursiva
+            next_agent = (agent_index + 1) % num_agents
+            next_depth = current_depth - 1
+
+            # MAX
+            if agent_index == 0: 
+                max_eval = -float('inf')
+                for action in legal_actions:
+                    successor = current_state.generate_successor(agent_index, action)
+                    eval_val = alphabeta(successor, next_depth, next_agent, alpha, beta)
+                    
+                    # Actualizar alpha y el valor máximo
+                    if eval_val > max_eval:
+                        max_eval = eval_val
+                        
+                    # Poda beta    
+                    if max_eval >= beta:
+                      return max_eval
+                    
+                    alpha = max(alpha, max_eval)
+                return max_eval
+              
+            # MIN
+            else:  
+                min_eval = float('inf')
+                for action in legal_actions:
+                    successor = current_state.generate_successor(agent_index, action)
+                    eval_val = alphabeta(successor, next_depth, next_agent, alpha, beta)
+                   
+                    # Actualizar beta y el valor mínimo 
+                    if eval_val < min_eval:
+                        min_eval = eval_val
+                    
+                    # Poda alfa
+                    if min_eval <= alpha:
+                      return min_eval
+
+                    beta = min(beta, min_eval)
+                return min_eval
+              
+        # Raíz del árbol
+        self.nodes_evaluated += 1
+        best_action = None
+        best_value = -float('inf')
+        alpha = -float('inf')
+        beta = float('inf')
+        legal_actions = state.get_legal_actions(0)
+        
+        for action in legal_actions:
+            successor = state.generate_successor(0, action)
+            action_value = alphabeta(successor, self.depth - 1, 1, alpha, beta)
+
+            if action_value > best_value:
+                best_value = action_value
+                best_action = action
+
+            # Actualizar alpha después de evaluar la acción
+            if best_value >= beta:
+                return best_action
+            alpha = max(alpha, best_value)
+        return best_action
